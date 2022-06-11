@@ -18,7 +18,7 @@ use self::{
 };
 use crate::{
     app::{ComponentMessage, MessageSender},
-    terminal::{Key, Rect},
+    terminal::{KeyEvent, Rect},
 };
 
 /// Components are the building blocks of the UI in Zi.
@@ -92,7 +92,7 @@ pub trait Component: Sized + 'static {
     /// by sending a message.
     fn bindings(&self, _bindings: &mut Bindings<Self>) {}
 
-    fn notify_binding_queries(&self, _queries: &[Option<NamedBindingQuery>], _keys: &[Key]) {}
+    fn notify_binding_queries(&self, _queries: &[Option<NamedBindingQuery>], _keys: &[KeyEvent]) {}
 
     fn tick(&self) -> Option<Self::Message> {
         None

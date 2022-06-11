@@ -25,7 +25,7 @@ use self::{
 };
 use zi::{
     app::{App, ComponentMessage, MessageSender},
-    terminal::{Canvas, Colour, Key, Size, Style},
+    terminal::{Canvas, Colour, KeyCode, KeyEvent, KeyModifiers, Size, Style},
     Layout,
 };
 
@@ -387,7 +387,7 @@ fn new_event_stream() -> EventStream {
             .filter_map(|event| async move {
                 match event {
                     Ok(crossterm::event::Event::Key(key_event)) => Some(Ok(FilteredEvent::Input(
-                        zi::terminal::Event::KeyPress(map_key(key_event)),
+                        zi::terminal::Event::Key(map_event(key_event)),
                     ))),
                     Ok(crossterm::event::Event::Resize(width, height)) => Some(Ok(
                         FilteredEvent::Resize(Size::new(width as usize, height as usize)),
@@ -401,28 +401,28 @@ fn new_event_stream() -> EventStream {
 }
 
 #[inline]
-fn map_key(key: crossterm::event::KeyEvent) -> Key {
-    use crossterm::event::{KeyCode, KeyModifiers};
-    match key.code {
-        KeyCode::Backspace => Key::Backspace,
-        KeyCode::Left => Key::Left,
-        KeyCode::Right => Key::Right,
-        KeyCode::Up => Key::Up,
-        KeyCode::Down => Key::Down,
-        KeyCode::Home => Key::Home,
-        KeyCode::End => Key::End,
-        KeyCode::PageUp => Key::PageUp,
-        KeyCode::PageDown => Key::PageDown,
-        KeyCode::BackTab => Key::BackTab,
-        KeyCode::Delete => Key::Delete,
-        KeyCode::Insert => Key::Insert,
-        KeyCode::F(u8) => Key::F(u8),
-        KeyCode::Null => Key::Null,
-        KeyCode::Esc => Key::Esc,
-        KeyCode::Char(char) if key.modifiers.contains(KeyModifiers::CONTROL) => Key::Ctrl(char),
-        KeyCode::Char(char) if key.modifiers.contains(KeyModifiers::ALT) => Key::Alt(char),
-        KeyCode::Char(char) => Key::Char(char),
-        KeyCode::Enter => Key::Char('\n'),
-        KeyCode::Tab => Key::Char('\t'),
-    }
+fn map_event(key: crossterm::event::KeyEvent) -> KeyEvent {
+    let key_code = match key.code {
+        crossterm::event::KeyCode::Backspace => KeyCode::Backspace,
+        crossterm::event::KeyCode::Left => KeyCode::Left,
+        crossterm::event::KeyCode::Right => KeyCode::Right,
+        crossterm::event::KeyCode::Up => KeyCode::Up,
+        crossterm::event::KeyCode::Down => KeyCode::Down,
+        crossterm::event::KeyCode::Home => KeyCode::Home,
+        crossterm::event::KeyCode::End => KeyCode::End,
+        crossterm::event::KeyCode::PageUp => KeyCode::PageUp,
+        crossterm::event::KeyCode::PageDown => KeyCode::PageDown,
+        crossterm::event::KeyCode::BackTab => KeyCode::BackTab,
+        crossterm::event::KeyCode::Delete => KeyCode::Delete,
+        crossterm::event::KeyCode::Insert => KeyCode::Insert,
+        crossterm::event::KeyCode::F(u8) => KeyCode::F(u8),
+        crossterm::event::KeyCode::Null => KeyCode::Null,
+        crossterm::event::KeyCode::Esc => KeyCode::Esc,
+        crossterm::event::KeyCode::Char(char) => KeyCode::Char(char),
+        crossterm::event::KeyCode::Enter => KeyCode::Enter,
+        crossterm::event::KeyCode::Tab => KeyCode::Tab,
+    };
+
+    let modifiers = KeyModifiers::from_bits(key.modifiers.bits()).unwrap_or(KeyModifiers::NONE);
+    KeyEvent::new(key_code, modifiers)
 }

@@ -4,8 +4,8 @@ use unicode_width::UnicodeWidthStr;
 use crate::{
     layout::Layout,
     text::{cursor, CharIndex, TextStorage},
-    AnyCharacter, Bindings, Callback, Canvas, Colour, Component, ComponentLink, Key, Rect,
-    ShouldRender, Style,
+    AnyCharacter, Bindings, Callback, Canvas, Colour, Component, ComponentLink, KeyCode, KeyEvent,
+    KeyModifiers, Rect, ShouldRender, Style,
 };
 
 pub use crate::text::Cursor;
@@ -162,36 +162,40 @@ impl Component for Input {
         if !bindings.is_empty() {
             return;
         }
+
         bindings
             .command("left", || Message::CursorLeft)
-            .with([Key::Ctrl('b')])
-            .with([Key::Left]);
+            .with([KeyEvent::new(KeyCode::Char('b'), KeyModifiers::CONTROL)])
+            .with([KeyEvent::from(KeyCode::Left)]);
         bindings
             .command("right", || Message::CursorRight)
-            .with([Key::Ctrl('f')])
-            .with([Key::Right]);
+            .with([KeyEvent::new(KeyCode::Char('f'), KeyModifiers::CONTROL)])
+            .with([KeyEvent::from(KeyCode::Right)]);
         bindings
             .command("start-of-line", || Message::StartOfLine)
-            .with([Key::Ctrl('a')])
-            .with([Key::Home]);
+            .with([KeyEvent::new(KeyCode::Char('a'), KeyModifiers::CONTROL)])
+            .with([KeyEvent::from(KeyCode::Home)]);
         bindings
             .command("end-of-line", || Message::EndOfLine)
-            .with([Key::Ctrl('e')])
-            .with([Key::End]);
+            .with([KeyEvent::new(KeyCode::Char('e'), KeyModifiers::CONTROL)])
+            .with([KeyEvent::from(KeyCode::End)]);
         bindings
             .command("delete-forward", || Message::DeleteForward)
-            .with([Key::Ctrl('d')])
-            .with([Key::Delete]);
-        bindings.add("delete-backward", [Key::Backspace], || {
-            Message::DeleteBackward
-        });
+            .with([KeyEvent::new(KeyCode::Char('d'), KeyModifiers::CONTROL)])
+            .with([KeyEvent::from(KeyCode::Delete)]);
+        bindings.add(
+            "delete-backward",
+            [KeyEvent::from(KeyCode::Backspace)],
+            || Message::DeleteBackward,
+        );
         bindings.add(
             "insert-character",
             AnyCharacter,
-            |keys: &[Key]| match keys {
-                &[Key::Char(character)]
-                    if character != '\n' && character != '\r' && character != '\t' =>
-                {
+            |keys: &[KeyEvent]| match keys {
+                &[KeyEvent {
+                    code: KeyCode::Char(character),
+                    modifiers: _,
+                }] if character != '\n' && character != '\r' && character != '\t' => {
                     Some(Message::InsertChar(character))
                 }
                 _ => None,

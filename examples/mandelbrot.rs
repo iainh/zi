@@ -179,19 +179,36 @@ impl Component for Viewer {
         bindings.set_focus(true);
 
         // Panning
-        bindings.add("move-up", [Key::Char('w')], || Message::MoveUp);
-        bindings.add("move-right", [Key::Char('d')], || Message::MoveRight);
-        bindings.add("move-down", [Key::Char('s')], || Message::MoveDown);
-        bindings.add("move-left", [Key::Char('a')], || Message::MoveLeft);
+        bindings.add("move-up", [KeyEvent::from(KeyCode::Char('w'))], || {
+            Message::MoveUp
+        });
+        bindings.add("move-right", [KeyEvent::from(KeyCode::Char('d'))], || {
+            Message::MoveRight
+        });
+        bindings.add("move-down", [KeyEvent::from(KeyCode::Char('s'))], || {
+            Message::MoveDown
+        });
+        bindings.add("move-left", [KeyEvent::from(KeyCode::Char('a'))], || {
+            Message::MoveLeft
+        });
 
         // Zoom
-        bindings.add("zoom-in", [Key::Char('=')], || Message::ZoomIn);
-        bindings.add("zoom-out", [Key::Char('-')], || Message::ZoomOut);
+        bindings.add("zoom-in", [KeyEvent::from(KeyCode::Char('='))], || {
+            Message::ZoomIn
+        });
+        bindings.add("zoom-out", [KeyEvent::from(KeyCode::Char('-'))], || {
+            Message::ZoomOut
+        });
 
         // Exit
-        bindings.add("exit", [Key::Ctrl('x'), Key::Ctrl('c')], |this: &Self| {
-            this.link.exit()
-        });
+        bindings.add(
+            "exit",
+            [
+                KeyEvent::new(KeyCode::Char('x'), KeyModifiers::CONTROL),
+                KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL),
+            ],
+            |this: &Self| this.link.exit(),
+        );
     }
 }
 

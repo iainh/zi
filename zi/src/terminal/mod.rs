@@ -7,7 +7,7 @@
 pub use canvas::{
     Background, Canvas, Colour, Foreground, GraphemeCluster, SquarePixelGrid, Style, Textel,
 };
-pub use input::{Event, Key};
+pub use input::{Event, KeyCode, KeyEvent, KeyModifiers};
 
 /// A 2D rectangle with usize coordinates. Re-exported from
 /// [euclid](https://docs.rs/euclid).

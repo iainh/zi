@@ -100,17 +100,19 @@ impl Component for Counter {
         // Increment, when pressing + or =
         bindings
             .command("increment", || Message::Increment)
-            .with([Key::Char('+')])
-            .with([Key::Char('=')]);
+            .with([KeyEvent::from(KeyCode::Char('+'))])
+            .with([KeyEvent::from(KeyCode::Char('='))]);
 
         // Decrement, when pressing -
-        bindings.add("decrement", [Key::Char('-')], || Message::Decrement);
+        bindings.add("decrement", [KeyEvent::from(KeyCode::Char('-'))], || {
+            Message::Decrement
+        });
 
         // Exit, when pressing Esc or Ctrl-c
         bindings
             .command("exit", |this: &Self| this.link.exit())
-            .with([Key::Ctrl('c')])
-            .with([Key::Esc]);
+            .with([KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL)])
+            .with([KeyEvent::from(KeyCode::Esc)]);
     }
 }
 

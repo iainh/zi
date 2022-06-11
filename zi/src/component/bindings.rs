@@ -8,7 +8,7 @@ use std::{
 };
 
 use super::{Component, DynamicMessage};
-use crate::terminal::Key;
+use crate::terminal::{KeyCode, KeyEvent};
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct CommandId(usize);
@@ -144,12 +144,15 @@ impl Keymap {
             .or_insert_with(|| BindingQuery::Match(command_id));
     }
 
-    pub fn check_sequence(&self, keys: &[Key]) -> Option<&BindingQuery> {
+    pub fn check_sequence(&self, keys: &[KeyEvent]) -> Option<&BindingQuery> {
         let pattern: KeyPattern = keys.iter().copied().into();
         self.keymap
             .get(&pattern)
             .or_else(|| match keys {
-                &[Key::Char(_)] => self.keymap.get(&KeyPattern::AnyCharacter),
+                &[KeyEvent {
+                    code: _code,
+                    modifiers: _modifiers,
+                }] => self.keymap.get(&KeyPattern::AnyCharacter),
                 _ => None,
             })
             .or_else(|| match keys {
@@ -160,7 +163,7 @@ impl Keymap {
 }
 
 #[allow(clippy::type_complexity)]
-struct DynamicCommandFn(Box<dyn Fn(&dyn Any, &[Key]) -> Option<DynamicMessage>>);
+struct DynamicCommandFn(Box<dyn Fn(&dyn Any, &[KeyEvent]) -> Option<DynamicMessage>>);
 
 impl fmt::Debug for DynamicCommandFn {
     fn fmt(&self, formatter: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -232,14 +235,15 @@ impl DynamicBindings {
         assert_eq!(self.type_id, TypeId::of::<ComponentT>());
 
         let (command_id, is_new_command) = self.keymap.add_command(name);
-        let dyn_command_fn = DynamicCommandFn(Box::new(move |erased: &dyn Any, keys: &[Key]| {
-            let component = erased
-                .downcast_ref()
-                .expect("Incorrect `Component` type when downcasting");
-            command_fn
-                .call(component, keys)
-                .map(|message| DynamicMessage(Box::new(message)))
-        }));
+        let dyn_command_fn =
+            DynamicCommandFn(Box::new(move |erased: &dyn Any, keys: &[KeyEvent]| {
+                let component = erased
+                    .downcast_ref()
+                    .expect("Incorrect `Component` type when downcasting");
+                command_fn
+                    .call(component, keys)
+                    .map(|message| DynamicMessage(Box::new(message)))
+            }));
         if is_new_command {
             self.commands.push(dyn_command_fn);
         } else {
@@ -257,7 +261,7 @@ impl DynamicBindings {
         &self,
         component: &ComponentT,
         id: CommandId,
-        keys: &[Key],
+        keys: &[KeyEvent],
     ) -> Option<DynamicMessage> {
         assert_eq!(self.type_id, TypeId::of::<ComponentT>());
 
@@ -357,12 +361,12 @@ impl<ComponentT: Component> BindingBuilder<'_, ComponentT> {
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub enum KeyPattern {
     AnyCharacter,
-    EndsWith([Key; 1]),
-    Keys(SmallVec<[Key; 8]>),
+    EndsWith([KeyEvent; 1]),
+    Keys(SmallVec<[KeyEvent; 8]>),
 }
 
 impl KeyPattern {
-    fn keys(&self) -> Option<&[Key]> {
+    fn keys(&self) -> Option<&[KeyEvent]> {
         match self {
             Self::AnyCharacter => None,
             Self::EndsWith(key) => Some(key.as_slice()),
@@ -371,7 +375,7 @@ impl KeyPattern {
     }
 }
 
-impl<IterT: IntoIterator<Item = Key>> From<IterT> for KeyPattern {
+impl<IterT: IntoIterator<Item = KeyEvent>> From<IterT> for KeyPattern {
     fn from(keys: IterT) -> Self {
         Self::Keys(keys.into_iter().collect())
     }
@@ -399,7 +403,7 @@ impl From<AnyCharacter> for KeyPattern {
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct EndsWith(pub Key);
+pub struct EndsWith(pub KeyEvent);
 
 impl From<EndsWith> for KeyPattern {
     fn from(ends_with: EndsWith) -> Self {
@@ -408,7 +412,7 @@ impl From<EndsWith> for KeyPattern {
 }
 
 pub trait CommandFn<ComponentT: Component, const VARIANT: usize> {
-    fn call(&self, component: &ComponentT, keys: &[Key]) -> Option<ComponentT::Message>;
+    fn call(&self, component: &ComponentT, keys: &[KeyEvent]) -> Option<ComponentT::Message>;
 }
 
 // Specializations for callbacks that take either a component or slice with keys
@@ -416,9 +420,9 @@ pub trait CommandFn<ComponentT: Component, const VARIANT: usize> {
 impl<ComponentT, FnT> CommandFn<ComponentT, 0> for FnT
 where
     ComponentT: Component,
-    FnT: Fn(&ComponentT, &[Key]) -> Option<ComponentT::Message> + 'static,
+    FnT: Fn(&ComponentT, &[KeyEvent]) -> Option<ComponentT::Message> + 'static,
 {
-    fn call(&self, component: &ComponentT, keys: &[Key]) -> Option<ComponentT::Message> {
+    fn call(&self, component: &ComponentT, keys: &[KeyEvent]) -> Option<ComponentT::Message> {
         (self)(component, keys)
     }
 }
@@ -429,7 +433,7 @@ where
     FnT: Fn(&ComponentT) -> Option<ComponentT::Message> + 'static,
 {
     #[inline]
-    fn call(&self, component: &ComponentT, _keys: &[Key]) -> Option<ComponentT::Message> {
+    fn call(&self, component: &ComponentT, _keys: &[KeyEvent]) -> Option<ComponentT::Message> {
         (self)(component)
     }
 }
@@ -437,10 +441,10 @@ where
 impl<ComponentT, FnT> CommandFn<ComponentT, 2> for FnT
 where
     ComponentT: Component,
-    FnT: Fn(&[Key]) -> Option<ComponentT::Message> + 'static,
+    FnT: Fn(&[KeyEvent]) -> Option<ComponentT::Message> + 'static,
 {
     #[inline]
-    fn call(&self, _component: &ComponentT, keys: &[Key]) -> Option<ComponentT::Message> {
+    fn call(&self, _component: &ComponentT, keys: &[KeyEvent]) -> Option<ComponentT::Message> {
         (self)(keys)
     }
 }
@@ -449,10 +453,10 @@ where
 impl<ComponentT, FnT> CommandFn<ComponentT, 3> for FnT
 where
     ComponentT: Component,
-    FnT: Fn(&ComponentT, &[Key]) + 'static,
+    FnT: Fn(&ComponentT, &[KeyEvent]) + 'static,
 {
     #[inline]
-    fn call(&self, component: &ComponentT, keys: &[Key]) -> Option<ComponentT::Message> {
+    fn call(&self, component: &ComponentT, keys: &[KeyEvent]) -> Option<ComponentT::Message> {
         (self)(component, keys);
         None
     }
@@ -464,7 +468,7 @@ where
     FnT: Fn(&ComponentT) + 'static,
 {
     #[inline]
-    fn call(&self, component: &ComponentT, _keys: &[Key]) -> Option<ComponentT::Message> {
+    fn call(&self, component: &ComponentT, _keys: &[KeyEvent]) -> Option<ComponentT::Message> {
         (self)(component);
         None
     }
@@ -477,16 +481,16 @@ where
     FnT: Fn() -> ComponentT::Message + 'static,
 {
     #[inline]
-    fn call(&self, _component: &ComponentT, _keys: &[Key]) -> Option<ComponentT::Message> {
+    fn call(&self, _component: &ComponentT, _keys: &[KeyEvent]) -> Option<ComponentT::Message> {
         Some((self)())
     }
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct KeySequenceSlice<'a>(&'a [Key]);
+pub struct KeySequenceSlice<'a>(&'a [KeyEvent]);
 
-impl<'a> From<&'a [Key]> for KeySequenceSlice<'a> {
-    fn from(keys: &'a [Key]) -> Self {
+impl<'a> From<&'a [KeyEvent]> for KeySequenceSlice<'a> {
+    fn from(keys: &'a [KeyEvent]) -> Self {
         Self(keys)
     }
 }
@@ -494,15 +498,18 @@ impl<'a> From<&'a [Key]> for KeySequenceSlice<'a> {
 impl<'a> std::fmt::Display for KeySequenceSlice<'a> {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         for (index, key) in self.0.iter().enumerate() {
+            let _modifiers = key.modifiers;
+            let key = key.code;
             match key {
-                Key::Char(' ') => write!(formatter, "SPC")?,
-                Key::Char('\n') => write!(formatter, "RET")?,
-                Key::Char('\t') => write!(formatter, "TAB")?,
-                Key::Char(char) => write!(formatter, "{}", char)?,
-                Key::Ctrl(char) => write!(formatter, "C-{}", char)?,
-                Key::Alt(char) => write!(formatter, "A-{}", char)?,
-                Key::F(number) => write!(formatter, "F{}", number)?,
-                Key::Esc => write!(formatter, "ESC")?,
+                KeyCode::Char(' ') => write!(formatter, "SPC")?,
+                KeyCode::Enter => write!(formatter, "RET")?,
+                KeyCode::Tab => write!(formatter, "TAB")?,
+                KeyCode::Char(char) => {
+                    // TODO: Print modifiers here as well
+                    write!(formatter, "{}", char)?
+                }
+                KeyCode::F(number) => write!(formatter, "F{}", number)?,
+                KeyCode::Esc => write!(formatter, "ESC")?,
                 key => write!(formatter, "{:?}", key)?,
             }
             if index < self.0.len().saturating_sub(1) {
@@ -550,10 +557,13 @@ mod tests {
     #[test]
     fn keymap_alternative_binding_for_same_command() {
         let mut keymap = Keymap::new();
-        let right_id = keymap.add("right", [Key::Right]);
-        let left_id = keymap.add("left", [Key::Left]);
+        let right_id = keymap.add("right", [KeyEvent::from(KeyCode::Right)]);
+        let left_id = keymap.add("left", [KeyEvent::from(KeyCode::Left)]);
         assert_ne!(left_id, right_id);
-        let alternate_left_id = keymap.add("left", [Key::Ctrl('b')]);
+        let alternate_left_id = keymap.add(
+            "left",
+            [KeyEvent::new(KeyCode::Char('b'), KeyModifiers::CONTROL)],
+        );
         assert_eq!(left_id, alternate_left_id);
     }
 
@@ -563,13 +573,20 @@ mod tests {
 
         // Create a controller with one registered command
         let mut controller = DynamicBindings::new::<Empty>();
-        let test_command_id = controller.add("test-command", [Key::Ctrl('x'), Key::Ctrl('f')], {
-            let called = Rc::clone(&called);
-            move |_: &Empty| {
-                *called.borrow_mut() = true;
-                None
-            }
-        });
+        let test_command_id = controller.add(
+            "test-command",
+            [
+                KeyEvent::new(KeyCode::Char('x'), KeyModifiers::CONTROL),
+                KeyEvent::new(KeyCode::Char('f'), KeyModifiers::CONTROL),
+            ],
+            {
+                let called = Rc::clone(&called);
+                move |_: &Empty| {
+                    *called.borrow_mut() = true;
+                    None
+                }
+            },
+        );
 
         // Check no key sequence is a prefix of test-command
         assert_eq!(
@@ -578,24 +595,33 @@ mod tests {
         );
         // Check C-x is a prefix of test-command
         assert_eq!(
-            controller.keymap().check_sequence(&[Key::Ctrl('x')]),
+            controller
+                .keymap()
+                .check_sequence(&[KeyEvent::new(KeyCode::Char('x'), KeyModifiers::CONTROL),]),
             Some(&BindingQuery::PrefixOf(smallvec![test_command_id]))
         );
         // Check C-x C-f is a match for test-command
         assert_eq!(
-            controller
-                .keymap()
-                .check_sequence(&[Key::Ctrl('x'), Key::Ctrl('f')]),
+            controller.keymap().check_sequence(&[
+                KeyEvent::new(KeyCode::Char('x'), KeyModifiers::CONTROL,),
+                KeyEvent::new(KeyCode::Char('f'), KeyModifiers::CONTROL,),
+            ]),
             Some(&BindingQuery::Match(test_command_id))
         );
 
         // Check C-f doesn't match any command
-        assert_eq!(controller.keymap().check_sequence(&[Key::Ctrl('f')]), None);
-        // Check C-x C-x doesn't match any command
         assert_eq!(
             controller
                 .keymap()
-                .check_sequence(&[Key::Ctrl('x'), Key::Ctrl('x')]),
+                .check_sequence(&[KeyEvent::new(KeyCode::Char('f'), KeyModifiers::CONTROL),]),
+            None
+        );
+        // Check C-x C-x doesn't match any command
+        assert_eq!(
+            controller.keymap().check_sequence(&[
+                KeyEvent::new(KeyCode::Char('x'), KeyModifiers::CONTROL),
+                KeyEvent::new(KeyCode::Char('x'), KeyModifiers::CONTROL),
+            ]),
             None
         );
 

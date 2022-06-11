@@ -9,7 +9,7 @@ use super::{
     layout::{ComponentKey, Layout},
     Component, ComponentLink, MessageSender, ShouldRender,
 };
-use crate::terminal::{Key, Rect};
+use crate::{terminal::Rect, KeyEvent};
 
 #[derive(Clone, Copy, Debug)]
 pub(crate) struct ComponentId {
@@ -95,13 +95,13 @@ pub(crate) trait Renderable {
 
     fn bindings(&self, bindings: &mut DynamicBindings);
 
-    fn notify_binding_queries(&self, bindings: &[Option<NamedBindingQuery>], keys: &[Key]);
+    fn notify_binding_queries(&self, bindings: &[Option<NamedBindingQuery>], keys: &[KeyEvent]);
 
     fn run_command(
         &self,
         bindings: &DynamicBindings,
         command_id: CommandId,
-        pressed: &[Key],
+        pressed: &[KeyEvent],
     ) -> Option<DynamicMessage>;
 
     fn tick(&self) -> Option<DynamicMessage>;
@@ -145,7 +145,7 @@ impl<ComponentT: Component> Renderable for ComponentT {
         bindings.typed(|bindings| <Self as Component>::bindings(self, bindings));
     }
 
-    fn notify_binding_queries(&self, bindings: &[Option<NamedBindingQuery>], keys: &[Key]) {
+    fn notify_binding_queries(&self, bindings: &[Option<NamedBindingQuery>], keys: &[KeyEvent]) {
         <Self as Component>::notify_binding_queries(self, bindings, keys);
     }
 
@@ -154,7 +154,7 @@ impl<ComponentT: Component> Renderable for ComponentT {
         &self,
         bindings: &DynamicBindings,
         command_id: CommandId,
-        keys: &[Key],
+        keys: &[KeyEvent],
     ) -> Option<DynamicMessage> {
         bindings.execute_command(self, command_id, keys)
     }

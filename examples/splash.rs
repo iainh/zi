@@ -148,9 +148,14 @@ impl Component for SplashScreen {
         bindings.set_focus(true);
 
         // Only one binding, for exiting
-        bindings.add("exit", [Key::Ctrl('x'), Key::Ctrl('c')], |this: &Self| {
-            this.link.exit()
-        });
+        bindings.add(
+            "exit",
+            [
+                KeyEvent::new(KeyCode::Char('x'), KeyModifiers::CONTROL),
+                KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL),
+            ],
+            |this: &Self| this.link.exit(),
+        );
     }
 }
 

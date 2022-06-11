@@ -1,9 +1,11 @@
 use std::{cmp, iter};
 
+use crate::{KeyCode, KeyEvent, KeyModifiers};
+
 use super::text::{Text, TextProperties};
 use crate::{
-    Bindings, Callback, Component, ComponentExt, ComponentLink, FlexDirection, Item, Key, Layout,
-    Rect, ShouldRender, Style,
+    Bindings, Callback, Component, ComponentExt, ComponentLink, FlexDirection, Item, Layout, Rect,
+    ShouldRender, Style,
 };
 
 #[derive(Clone, PartialEq)]
@@ -135,16 +137,50 @@ impl Component for Select {
         if !bindings.is_empty() {
             return;
         }
-        bindings.add("next-item", [Key::Ctrl('n')], || Message::NextItem);
-        bindings.add("next-item", [Key::Down], || Message::NextItem);
-        bindings.add("previous-item", [Key::Ctrl('p')], || Message::PreviousItem);
-        bindings.add("previous-item", [Key::Up], || Message::PreviousItem);
-        bindings.add("first-item", [Key::Alt('<')], || Message::FirstItem);
-        bindings.add("last-item", [Key::Alt('>')], || Message::LastItem);
-        bindings.add("next-page", [Key::Ctrl('v')], || Message::NextPage);
-        bindings.add("next-page", [Key::PageDown], || Message::NextPage);
-        bindings.add("previous-page", [Key::Alt('v')], || Message::PreviousPage);
-        bindings.add("previous-page", [Key::PageUp], || Message::PreviousPage);
+
+        bindings.add(
+            "next-item",
+            [KeyEvent::new(KeyCode::Char('n'), KeyModifiers::CONTROL)],
+            || Message::NextItem,
+        );
+
+        bindings.add("next-item", [KeyEvent::from(KeyCode::Down)], || {
+            Message::NextItem
+        });
+        bindings.add(
+            "previous-item",
+            [KeyEvent::new(KeyCode::Char('p'), KeyModifiers::CONTROL)],
+            || Message::PreviousItem,
+        );
+        bindings.add("previous-item", [KeyEvent::from(KeyCode::Up)], || {
+            Message::PreviousItem
+        });
+        bindings.add(
+            "first-item",
+            [KeyEvent::new(KeyCode::Char('<'), KeyModifiers::ALT)],
+            || Message::FirstItem,
+        );
+        bindings.add(
+            "last-item",
+            [KeyEvent::new(KeyCode::Char('>'), KeyModifiers::ALT)],
+            || Message::LastItem,
+        );
+        bindings.add(
+            "next-page",
+            [KeyEvent::new(KeyCode::Char('v'), KeyModifiers::CONTROL)],
+            || Message::NextPage,
+        );
+        bindings.add("next-page", [KeyEvent::from(KeyCode::PageDown)], || {
+            Message::NextPage
+        });
+        bindings.add(
+            "previous-page",
+            [KeyEvent::new(KeyCode::Char('v'), KeyModifiers::ALT)],
+            || Message::PreviousPage,
+        );
+        bindings.add("previous-page", [KeyEvent::from(KeyCode::PageUp)], || {
+            Message::PreviousPage
+        });
     }
 }
 

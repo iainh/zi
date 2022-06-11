@@ -447,21 +447,45 @@ impl Component for TodoMvc {
 
         bindings
             .command("edit", || Message::Edit)
-            .with([Key::Esc])
-            .with([Key::Alt('\u{1b}')]);
-        bindings.add("add-item", [Key::Char('\n')], || Message::AddItem);
-        bindings.add("move-item-up", [Key::Alt('p')], || Message::MoveItemUp);
-        bindings.add("move-item-down", [Key::Alt('n')], || Message::MoveItemDown);
-        bindings.add("delete-item", [Key::Ctrl('k')], || Message::DeleteItem);
+            .with([KeyEvent::from(KeyCode::Esc)])
+            .with([KeyEvent::new(KeyCode::Char('\u{1b}'), KeyModifiers::ALT)]);
+        bindings.add("add-item", [KeyEvent::from(KeyCode::Enter)], || {
+            Message::AddItem
+        });
+        bindings.add(
+            "move-item-up",
+            [KeyEvent::new(KeyCode::Char('p'), KeyModifiers::ALT)],
+            || Message::MoveItemUp,
+        );
+        bindings.add(
+            "move-item-down",
+            [KeyEvent::new(KeyCode::Char('n'), KeyModifiers::ALT)],
+            || Message::MoveItemDown,
+        );
+        bindings.add(
+            "delete-item",
+            [KeyEvent::new(KeyCode::Char('k'), KeyModifiers::CONTROL)],
+            || Message::DeleteItem,
+        );
         bindings.add(
             "delete-done-items",
-            [Key::Ctrl('x'), Key::Ctrl('k')],
+            [
+                KeyEvent::new(KeyCode::Char('x'), KeyModifiers::CONTROL),
+                KeyEvent::new(KeyCode::Char('k'), KeyModifiers::CONTROL),
+            ],
             || Message::DeleteDone,
         );
-        bindings.add("toggle-done", [Key::Char('\t')], || Message::ToggleDone);
-        bindings.add("exit", [Key::Ctrl('x'), Key::Ctrl('c')], |this: &Self| {
-            this.link.exit()
+        bindings.add("toggle-done", [KeyEvent::from(KeyCode::Tab)], || {
+            Message::ToggleDone
         });
+        bindings.add(
+            "exit",
+            [
+                KeyEvent::new(KeyCode::Char('k'), KeyModifiers::CONTROL),
+                KeyEvent::new(KeyCode::Char('c'), KeyModifiers::CONTROL),
+            ],
+            |this: &Self| this.link.exit(),
+        );
     }
 }
 

@@ -12,7 +12,7 @@ use crate::{
         template::{ComponentId, DynamicMessage, DynamicProperties, Renderable},
         LinkMessage, ShouldRender,
     },
-    terminal::{Canvas, Event, Key, Position, Rect, Size},
+    terminal::{Canvas, Event, KeyCode, KeyEvent, KeyModifiers, Position, Rect, Size},
 };
 
 pub trait MessageSender: Debug + Send + 'static {
@@ -265,16 +265,15 @@ impl App {
     #[inline]
     pub fn handle_input(&mut self, event: Event) {
         match event {
-            Event::KeyPress(key) => {
-                self.handle_key(key);
-                // todo: handle_event should return whether we need to rerender
+            Event::Key(key_event) => {
+                self.handle_key(key_event);
                 self.runtime.poll_state.merge(PollState::Dirty(None));
             }
         }
     }
 
     #[inline]
-    fn handle_key(&mut self, key: Key) {
+    fn handle_key(&mut self, key: KeyEvent) {
         let Self {
             ref mut components,
             ref subscriptions,
@@ -579,7 +578,7 @@ impl MountedComponent {
 }
 
 struct InputController {
-    keys: SmallVec<[Key; 8]>,
+    keys: SmallVec<[KeyEvent; 8]>,
 }
 
 impl InputController {
@@ -589,7 +588,7 @@ impl InputController {
         }
     }
 
-    fn push(&mut self, key: Key) {
+    fn push(&mut self, key: KeyEvent) {
         self.keys.push(key);
     }
 }
@@ -597,15 +596,26 @@ impl InputController {
 impl std::fmt::Display for InputController {
     fn fmt(&self, formatter: &mut std::fmt::Formatter) -> std::result::Result<(), std::fmt::Error> {
         for key in self.keys.iter() {
-            match key {
-                Key::Char(' ') => write!(formatter, "SPC ")?,
-                Key::Char('\n') => write!(formatter, "RET ")?,
-                Key::Char('\t') => write!(formatter, "TAB ")?,
-                Key::Char(char) => write!(formatter, "{} ", char)?,
-                Key::Ctrl(char) => write!(formatter, "C-{} ", char)?,
-                Key::Alt(char) => write!(formatter, "A-{} ", char)?,
-                Key::F(number) => write!(formatter, "F{} ", number)?,
-                Key::Esc => write!(formatter, "ESC ")?,
+            let modifiers = key.modifiers;
+            let key_code = key.code;
+
+            match key_code {
+                KeyCode::Char(' ') => write!(formatter, "SPC ")?,
+                KeyCode::Enter => write!(formatter, "RET ")?,
+                KeyCode::Tab => write!(formatter, "TAB ")?,
+                KeyCode::Char(char) => {
+                    if modifiers.contains(KeyModifiers::CONTROL) {
+                        write!(formatter, "C-")?;
+                    }
+
+                    if modifiers.contains(KeyModifiers::ALT) {
+                        write!(formatter, "A-")?;
+                    }
+
+                    write!(formatter, "{} ", char)?
+                }
+                KeyCode::F(number) => write!(formatter, "F{} ", number)?,
+                KeyCode::Esc => write!(formatter, "ESC ")?,
                 key => write!(formatter, "{:?} ", key)?,
             }
         }
